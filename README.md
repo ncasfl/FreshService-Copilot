@@ -5,7 +5,7 @@
 
 ## Overview
 
-The FreshService Enhanced Copilot MCP Connector is a next-generation **Microsoft Power Platform Custom Connector** that transforms your FreshService ITSM instance into an AI-powered service desk with advanced analytics, predictive insights, and natural language processing capabilities.
+The FreshService Enhanced Copilot MCP Connector is a next-generation **Microsoft Power Platform Custom Connector** that transforms your FreshService ITSM instance into an AI-powered service desk with advanced analytics, predictive insights, and natural language processing capabilities.  NOTE: This version only utilizes get commands and is not designed for updating, creating, deleting, approving, of FreshService records. A read-only API key is recommended.
 
 ### Key Features
 
