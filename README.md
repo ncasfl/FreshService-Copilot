@@ -1,4 +1,4 @@
-# FreshService Enhanced Power AUtomate/Copilot MCP Connector
+# FreshService Enhanced Power Automate/Copilot MCP Connector
 
 > **🚀 V4 Release**: Advanced Analytics & Predictive Insights for AI-Powered IT Service Management
 ## Developer : Christopher Hohman
