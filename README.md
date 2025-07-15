@@ -32,7 +32,7 @@ This connector consists of two core components:
 - **Safety-First Design**: Integer overflow protection and graceful error handling
 - **Performance Optimized**: Sub-second execution with memory-efficient operations
 
-## V4 Enhancements
+## Enhancements
 
 ### 🎯 Advanced Analytics Dashboard
 - **Real-time Metrics**: Total tickets, average age, resolution rates
