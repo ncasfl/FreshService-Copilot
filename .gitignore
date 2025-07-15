@@ -1,0 +1,133 @@
+# FreshService-Copilot Project - Git Ignore File
+
+# Exclude development and archive directories
+/archive/
+/docs/
+/temp/
+/logs/
+/test-results/
+
+# Exclude sensitive configuration files
+*.secrets
+*.env
+*.env.local
+*.env.production
+*.env.development
+appsettings.*.json
+secrets.json
+connection-strings.json
+api-keys.json
+
+# Exclude temporary and build artifacts
+*.tmp
+*.temp
+*.log
+*.cache
+*.bak
+*.swp
+*.swo
+*~
+
+# Exclude IDE and editor files
+.vscode/
+.vs/
+.idea/
+*.user
+*.suo
+*.sln.docstates
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.dll
+*.exe
+*.obj
+*.bin
+
+# Exclude OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Exclude Node.js dependencies (if any)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Exclude Python bytecode (if any)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Exclude documentation build artifacts
+_build/
+.doctrees/
+*.pdf
+*.docx
+*.pptx
+
+# Exclude test coverage reports
+coverage/
+*.cover
+.hypothesis/
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+*.lcov
+
+# Exclude database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Exclude backup files
+*.backup
+*.old
+*.orig
+
+# Exclude PowerShell artifacts
+*.ps1xml
+*.ps1
+*.bat
+
+# Exclude deployment artifacts
+deploy/
+release/
+publish/
+*.zip
+*.tar.gz
+*.rar
+
+# Keep important files (explicitly include)
+!README.md
+!LICENSE
+!CHANGELOG.md
+!CONTRIBUTING.md
+!CODE_OF_CONDUCT.md
+!SECURITY.md
+!.github/
+
+# Keep core project files
+!freshservice-copilot.yaml
+!freshservice-copilot.cs
+!FreshService_Copilot_General_Instructions.md
+!FreshService_Copilot_General_Instructions_Concise.md
+!FreshService-Copilot-White-Paper.md
+README.md

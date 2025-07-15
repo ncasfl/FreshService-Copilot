@@ -1,0 +1,1877 @@
+swagger: '2.0'
+info:
+  title: FreshService Enhanced API
+  version: '2.0'
+  description: FreshService API v2 with natural language query support and enhanced semantic context for AI/Copilot integration
+  x-ms-api-annotation:
+    status: preview
+
+# Replace 'yourdomain' with your actual FreshService subdomain
+host: sagitecsolutions.freshservice.com
+basePath: /api/v2
+schemes:
+  - https
+
+consumes:
+  - application/json
+produces:
+  - application/json
+
+tags:
+  - name: Tickets
+    description: Service desk tickets and associated data
+  - name: Conversations
+    description: Ticket conversations including replies and notes
+  - name: Problems
+    description: Problem management records and components
+  - name: Changes
+    description: Change management records and components
+  - name: Releases
+    description: Release management records and components
+  - name: Workspaces
+    description: Workspaces/Clients management
+  - name: Agents
+    description: Users/Agents management
+  - name: Requesters
+    description: Requesters/Contacts management
+
+# Global Parameters
+parameters:
+  natural_query:
+    name: natural_query
+    in: query
+    type: string
+    x-ms-summary: Natural Language Query
+    x-ms-description: Ask about items in plain English (e.g., "urgent tickets from today", "overdue VIP tickets")
+    x-ms-visibility: important
+  
+  nlq:
+    name: nlq
+    in: query
+    type: string
+    x-ms-summary: Ask in Plain English
+    x-ms-description: Natural language search (e.g., "overdue tickets", "waiting on customer")
+    x-ms-visibility: important
+  
+  workspace_id:
+    name: workspace_id
+    in: query
+    type: integer
+    format: int32
+    description: ID of workspace; 0 for all accessible workspaces
+    x-ms-summary: Workspace ID
+    x-ms-visibility: advanced
+  
+  page:
+    name: page
+    in: query
+    type: integer
+    format: int32
+    minimum: 1
+    default: 1
+    description: Page number for pagination
+    x-ms-summary: Page Number
+    x-ms-visibility: advanced
+  
+  per_page:
+    name: per_page
+    in: query
+    type: integer
+    format: int32
+    minimum: 1
+    maximum: 100
+    default: 30
+    description: Number of items per page
+    x-ms-summary: Items Per Page
+    x-ms-visibility: advanced
+  
+  updated_since:
+    name: updated_since
+    in: query
+    type: string
+    format: date-time
+    description: Filter by last update timestamp
+    x-ms-summary: Updated Since
+    x-ms-visibility: advanced
+  
+  query:
+    name: query
+    in: query
+    type: string
+    description: URL-encoded query string supporting logical operators
+    x-ms-summary: Advanced Query
+    x-ms-visibility: advanced
+
+paths:
+  # Tickets
+  /tickets:
+    get:
+      tags:
+        - Tickets
+      summary: List tickets
+      description: Retrieve tickets with natural language query support and enhanced semantic context
+      operationId: ListTickets
+      parameters:
+        - $ref: '#/parameters/natural_query'
+        - name: filter
+          in: query
+          type: string
+          enum: [new_and_my_open, watching, spam, deleted]
+          x-ms-summary: Predefined Filter
+          x-ms-visibility: advanced
+        - name: requester_id
+          in: query
+          type: integer
+          format: int64
+          x-ms-summary: Requester ID
+          x-ms-visibility: advanced
+        - name: email
+          in: query
+          type: string
+          x-ms-summary: Requester Email
+          x-ms-visibility: advanced
+        - name: ticket_type
+          in: query
+          type: string
+          x-ms-summary: Ticket Type
+          x-ms-visibility: advanced
+        - $ref: '#/parameters/workspace_id'
+        - $ref: '#/parameters/updated_since'
+        - $ref: '#/parameters/page'
+        - $ref: '#/parameters/per_page'
+      responses:
+        200:
+          description: Success
+          schema:
+            $ref: '#/definitions/TicketListResponse'
+          examples:
+            application/json:
+              tickets:
+                - id: 1
+                  subject: "Laptop not connecting to WiFi"
+                  priority: 4
+                  priority_label: "Urgent"
+                  status: 2
+                  status_label: "Open"
+                  age_hours: 5
+                  semantic_context:
+                    urgency_level: "Critical - Immediate attention required"
+                    requires_action: true
+              metadata:
+                count: 1
+                has_more: false
+              summary:
+                total_tickets: 1
+                urgent_tickets: 1
+                natural_language: "You have 1 ticket: 1 urgent"
+              query_interpretation:
+                original_query: "urgent tickets from today"
+                interpreted_filters: "priority:4 AND created_at:>'2025-01-27'"
+                interpretation_confidence: "High"
+        401:
+          $ref: '#/responses/Unauthorized'
+        429:
+          $ref: '#/responses/TooManyRequests'
+
+  /tickets/{id}:
+    get:
+      tags:
+        - Tickets
+      summary: Get ticket details
+      description: Retrieve detailed information for a specific ticket with enhanced context
+      operationId: GetTicket
+      parameters:
+        - name: id
+          in: path
+          required: true
+          type: integer
+          format: int64
+          x-ms-summary: Ticket ID
+          x-ms-url-encoding: single
+      responses:
+        200:
+          description: Success
+          schema:
+            type: object
+            properties:
+              ticket:
+                $ref: '#/definitions/EnhancedTicket'
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+
+  /tickets/{id}/conversations:
+    get:
+      tags:
+        - Conversations
+      summary: List ticket conversations
+      description: Retrieve all conversations and notes for a specific ticket
+      operationId: GetTicketConversations
+      parameters:
+        - name: id
+          in: path
+          required: true
+          type: integer
+          format: int64
+          x-ms-summary: Ticket ID
+        - $ref: '#/parameters/page'
+        - $ref: '#/parameters/per_page'
+      responses:
+        200:
+          description: Success
+          schema:
+            type: object
+            properties:
+              conversations:
+                type: array
+                items:
+                  $ref: '#/definitions/Conversation'
+              summary:
+                type: object
+                properties:
+                  total_count:
+                    type: integer
+                    format: int32
+                  public_notes:
+                    type: integer
+                    format: int32
+                  private_notes:
+                    type: integer
+                    format: int32
+                  latest_update:
+                    type: string
+                    format: date-time
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+
+  /tickets/{id}/time_entries:
+    get:
+      tags:
+        - Tickets
+      summary: List ticket time entries
+      description: Retrieve all time entries recorded for a specific ticket
+      operationId: GetTicketTimeEntries
+      parameters:
+        - name: id
+          in: path
+          required: true
+          type: integer
+          format: int64
+          x-ms-summary: Ticket ID
+      responses:
+        200:
+          description: Success
+          schema:
+            type: object
+            properties:
+              time_entries:
+                type: array
+                items:
+                  $ref: '#/definitions/TimeEntry'
+              summary:
+                type: object
+                properties:
+                  total_entries:
+                    type: integer
+                    format: int32
+                  total_minutes:
+                    type: integer
+                    format: int32
+                  total_hours:
+                    type: number
+                  total_formatted:
+                    type: string
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+
+  # Problems
+  /problems:
+    get:
+      tags:
+        - Problems
+      summary: List problems
+      description: Retrieve problems with natural language query support
+      operationId: ListProblems
+      parameters:
+        - $ref: '#/parameters/natural_query'
+        - name: filter
+          in: query
+          type: string
+          enum: [all_problems, open_problems]
+          x-ms-summary: Filter
+          x-ms-visibility: advanced
+        - name: requester_id
+          in: query
+          type: integer
+          format: int64
+          x-ms-summary: Requester ID
+          x-ms-visibility: advanced
+        - name: email
+          in: query
+          type: string
+          x-ms-summary: Email
+          x-ms-visibility: advanced
+        - name: order_by
+          in: query
+          type: string
+          x-ms-summary: Order By
+          x-ms-visibility: advanced
+        - name: order_type
+          in: query
+          type: string
+          enum: [asc, desc]
+          x-ms-summary: Order Type
+          x-ms-visibility: advanced
+        - $ref: '#/parameters/workspace_id'
+        - $ref: '#/parameters/updated_since'
+        - $ref: '#/parameters/page'
+        - $ref: '#/parameters/per_page'
+      responses:
+        200:
+          description: Success
+          schema:
+            type: object
+            properties:
+              problems:
+                type: array
+                items:
+                  $ref: '#/definitions/EnhancedProblem'
+              insights:
+                $ref: '#/definitions/ProblemInsights'
+        401:
+          $ref: '#/responses/Unauthorized'
+
+  /problems/{id}:
+    get:
+      tags:
+        - Problems
+      summary: Get problem details
+      description: Retrieve detailed information for a specific problem record
+      operationId: GetProblem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          type: integer
+          format: int64
+          x-ms-summary: Problem ID
+      responses:
+        200:
+          description: Success
+          schema:
+            type: object
+            properties:
+              problem:
+                $ref: '#/definitions/EnhancedProblem'
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+
+  # Changes
+  /changes:
+    get:
+      tags:
+        - Changes
+      summary: List changes
+      description: Retrieve changes with natural language query support
+      operationId: ListChanges
+      parameters:
+        - $ref: '#/parameters/natural_query'
+        - name: view
+          in: query
+          type: string
+          x-ms-summary: View
+          x-ms-visibility: advanced
+        - name: order_by
+          in: query
+          type: string
+          x-ms-summary: Order By
+          x-ms-visibility: advanced
+        - name: order_type
+          in: query
+          type: string
+          enum: [asc, desc]
+          x-ms-summary: Order Type
+          x-ms-visibility: advanced
+        - $ref: '#/parameters/query'
+        - $ref: '#/parameters/workspace_id'
+        - $ref: '#/parameters/updated_since'
+        - $ref: '#/parameters/page'
+        - $ref: '#/parameters/per_page'
+      responses:
+        200:
+          description: Success
+          schema:
+            type: object
+            properties:
+              changes:
+                type: array
+                items:
+                  $ref: '#/definitions/EnhancedChange'
+              insights:
+                $ref: '#/definitions/ChangeInsights'
+        401:
+          $ref: '#/responses/Unauthorized'
+
+  /changes/{id}:
+    get:
+      tags:
+        - Changes
+      summary: Get change details
+      description: Retrieve detailed information for a specific change request
+      operationId: GetChange
+      parameters:
+        - name: id
+          in: path
+          required: true
+          type: integer
+          format: int64
+          x-ms-summary: Change ID
+      responses:
+        200:
+          description: Success
+          schema:
+            type: object
+            properties:
+              change:
+                $ref: '#/definitions/EnhancedChange'
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+
+  # Releases
+  /releases:
+    get:
+      tags:
+        - Releases
+      summary: List releases
+      description: Retrieve releases with natural language query support
+      operationId: ListReleases
+      parameters:
+        - $ref: '#/parameters/natural_query'
+        - name: filter_name
+          in: query
+          type: string
+          enum: [all, my_open, unassigned, completed, incompleted, deleted]
+          default: all
+          x-ms-summary: Filter
+          x-ms-visibility: advanced
+        - $ref: '#/parameters/workspace_id'
+        - $ref: '#/parameters/page'
+        - $ref: '#/parameters/per_page'
+      responses:
+        200:
+          description: Success
+          schema:
+            type: object
+            properties:
+              releases:
+                type: array
+                items:
+                  $ref: '#/definitions/EnhancedRelease'
+              insights:
+                $ref: '#/definitions/ReleaseInsights'
+        401:
+          $ref: '#/responses/Unauthorized'
+
+  /releases/{id}:
+    get:
+      tags:
+        - Releases
+      summary: Get release details
+      description: Retrieve detailed information for a specific release
+      operationId: GetRelease
+      parameters:
+        - name: id
+          in: path
+          required: true
+          type: integer
+          format: int64
+          x-ms-summary: Release ID
+      responses:
+        200:
+          description: Success
+          schema:
+            type: object
+            properties:
+              release:
+                $ref: '#/definitions/EnhancedRelease'
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+
+  # Agents
+  /agents:
+    get:
+      tags:
+        - Agents
+      summary: List agents
+      description: Retrieve a list of all agents with filtering and summary statistics
+      operationId: ListAgents
+      parameters:
+        - name: filter
+          in: query
+          type: string
+          enum: [full_time, occasional, active, deactivated]
+          x-ms-summary: Filter
+          x-ms-visibility: advanced
+        - name: order_by
+          in: query
+          type: string
+          enum: [created_at, email]
+          x-ms-summary: Order By
+          x-ms-visibility: advanced
+        - name: order_type
+          in: query
+          type: string
+          enum: [asc, desc]
+          default: desc
+          x-ms-summary: Order Type
+          x-ms-visibility: advanced
+        - $ref: '#/parameters/workspace_id'
+        - $ref: '#/parameters/page'
+        - $ref: '#/parameters/per_page'
+      responses:
+        200:
+          description: Success
+          schema:
+            type: object
+            properties:
+              agents:
+                type: array
+                items:
+                  $ref: '#/definitions/Agent'
+              summary:
+                type: object
+                properties:
+                  total_agents:
+                    type: integer
+                    format: int32
+                  active_agents:
+                    type: integer
+                    format: int32
+                  full_time_agents:
+                    type: integer
+                    format: int32
+                  occasional_agents:
+                    type: integer
+                    format: int32
+        401:
+          $ref: '#/responses/Unauthorized'
+
+  /agents/{id}:
+    get:
+      tags:
+        - Agents
+      summary: Get agent details
+      description: Retrieve detailed information for a specific agent
+      operationId: GetAgent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          type: integer
+          format: int64
+          x-ms-summary: Agent ID
+      responses:
+        200:
+          description: Success
+          schema:
+            type: object
+            properties:
+              agent:
+                $ref: '#/definitions/Agent'
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+
+  # Requesters
+  /requesters:
+    get:
+      tags:
+        - Requesters
+      summary: List requesters
+      description: Retrieve a list of all requesters with filtering and summary statistics
+      operationId: ListRequesters
+      parameters:
+        - name: email
+          in: query
+          type: string
+          x-ms-summary: Email
+          x-ms-visibility: advanced
+        - name: active
+          in: query
+          type: boolean
+          x-ms-summary: Active Only
+          x-ms-visibility: advanced
+        - name: include_agents
+          in: query
+          type: boolean
+          x-ms-summary: Include Agents
+          x-ms-visibility: advanced
+        - $ref: '#/parameters/query'
+        - $ref: '#/parameters/page'
+        - $ref: '#/parameters/per_page'
+      responses:
+        200:
+          description: Success
+          schema:
+            type: object
+            properties:
+              requesters:
+                type: array
+                items:
+                  $ref: '#/definitions/Requester'
+              summary:
+                type: object
+                properties:
+                  total_requesters:
+                    type: integer
+                    format: int32
+                  active_requesters:
+                    type: integer
+                    format: int32
+                  vip_requesters:
+                    type: integer
+                    format: int32
+        401:
+          $ref: '#/responses/Unauthorized'
+
+  /requesters/{id}:
+    get:
+      tags:
+        - Requesters
+      summary: Get requester details
+      description: Retrieve detailed information for a specific requester
+      operationId: GetRequester
+      parameters:
+        - name: id
+          in: path
+          required: true
+          type: integer
+          format: int64
+          x-ms-summary: Requester ID
+      responses:
+        200:
+          description: Success
+          schema:
+            type: object
+            properties:
+              requester:
+                $ref: '#/definitions/Requester'
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+
+  # Natural Language Examples (for dynamic dropdowns)
+  /natural-language-examples:
+    get:
+      tags:
+        - System
+      summary: Get natural language query examples
+      operationId: GetNaturalLanguageExamples
+      x-ms-visibility: internal
+      responses:
+        200:
+          description: Success
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                query:
+                  type: string
+                description:
+                  type: string
+          examples:
+            application/json:
+              - query: "urgent tickets from today"
+                description: "All urgent priority tickets created today"
+              - query: "overdue VIP tickets"
+                description: "Overdue tickets from VIP customers"
+              - query: "unassigned network issues"
+                description: "Network-related tickets without an agent"
+              - query: "high priority problems this week"
+                description: "High priority problems created in the last 7 days"
+              - query: "pending changes for this weekend"
+                description: "Changes scheduled for the upcoming weekend"
+
+# Definitions
+definitions:
+  # Response structure definitions
+  ResponseMetadata:
+    type: object
+    x-ms-summary: Response Metadata
+    properties:
+      count:
+        type: integer
+        format: int32
+        x-ms-summary: Total Count
+      timestamp:
+        type: string
+        format: date-time
+        x-ms-summary: Response Time
+      has_more:
+        type: boolean
+        x-ms-summary: Has More Pages
+
+  TicketSummary:
+    type: object
+    x-ms-summary: Summary Statistics
+    properties:
+      total_tickets:
+        type: integer
+        format: int32
+        x-ms-summary: Total Tickets
+      open_tickets:
+        type: integer
+        format: int32
+        x-ms-summary: Open Tickets
+      urgent_tickets:
+        type: integer
+        format: int32
+        x-ms-summary: Urgent Tickets
+      overdue_tickets:
+        type: integer
+        format: int32
+        x-ms-summary: Overdue Tickets
+      natural_language:
+        type: string
+        x-ms-summary: Summary Description
+
+  TicketInsights:
+    type: object
+    x-ms-summary: Data Insights
+    properties:
+      metrics:
+        type: object
+        x-ms-summary: Basic Metrics
+        properties:
+          total_count:
+            type: integer
+            format: int32
+            x-ms-summary: Total Count
+          average_age_hours:
+            type: number
+            x-ms-summary: Average Age (Hours)
+          average_age_days:
+            type: number
+            x-ms-summary: Average Age (Days)
+          unresolved_count:
+            type: integer
+            format: int32
+            x-ms-summary: Unresolved Count
+          resolved_today:
+            type: integer
+            format: int32
+            x-ms-summary: Resolved Today
+          new_today:
+            type: integer
+            format: int32
+            x-ms-summary: Created Today
+      trends:
+        type: object
+        x-ms-summary: Trend Analysis
+        properties:
+          volume_trend:
+            type: string
+            x-ms-summary: Volume Trend
+            enum: [increasing_significantly, increasing, stable, decreasing, decreasing_significantly]
+          resolution_rate_trend:
+            type: string
+            x-ms-summary: Resolution Rate
+            enum: [excellent, good, needs_improvement, poor]
+          response_time_trend:
+            type: string
+            x-ms-summary: Response Time Trend
+            enum: [excellent, good, needs_improvement, critical]
+          common_issues:
+            type: array
+            x-ms-summary: Common Issues
+            items:
+              type: object
+              properties:
+                category:
+                  type: string
+                count:
+                  type: integer
+                  format: int32
+                percentage:
+                  type: number
+          emerging_patterns:
+            type: array
+            x-ms-summary: Emerging Patterns
+            items:
+              type: object
+              properties:
+                pattern:
+                  type: string
+                occurrences:
+                  type: integer
+                  format: int32
+                timeframe:
+                  type: string
+                significance:
+                  type: string
+      risks:
+        type: object
+        x-ms-summary: Risk Analysis
+        properties:
+          sla_breach_count:
+            type: integer
+            format: int32
+            x-ms-summary: SLA Breach Risk
+          overdue_count:
+            type: integer
+            format: int32
+            x-ms-summary: Overdue Tickets
+          high_age_tickets:
+            type: integer
+            format: int32
+            x-ms-summary: High Age Tickets (>72h)
+          unassigned_urgent:
+            type: integer
+            format: int32
+            x-ms-summary: Unassigned Urgent
+          stale_waiting_customer:
+            type: integer
+            format: int32
+            x-ms-summary: Stale Customer Waiting
+          critical_vip_issues:
+            type: integer
+            format: int32
+            x-ms-summary: Critical VIP Issues
+      workload:
+        type: object
+        x-ms-summary: Workload Distribution
+        properties:
+          agent_distribution:
+            type: array
+            items:
+              type: object
+              properties:
+                agent_id:
+                  type: integer
+                  format: int64
+                ticket_count:
+                  type: integer
+                  format: int32
+                urgent_count:
+                  type: integer
+                  format: int32
+                average_age_hours:
+                  type: number
+          unassigned_count:
+            type: integer
+            format: int32
+            x-ms-summary: Unassigned Count
+          workload_balance:
+            type: string
+            x-ms-summary: Workload Balance
+            enum: [well_balanced, moderately_balanced, imbalanced, not_applicable]
+      performance:
+        type: object
+        x-ms-summary: Performance Metrics
+        properties:
+          average_resolution_hours:
+            type: number
+            x-ms-summary: Avg Resolution (Hours)
+          first_response_compliance:
+            type: number
+            x-ms-summary: First Response Compliance %
+          reopened_ticket_rate:
+            type: number
+            x-ms-summary: Reopened Rate %
+      executive_summary:
+        type: string
+        x-ms-summary: Executive Summary
+        x-ms-description: Natural language summary with emoji indicators
+      actionable_recommendations:
+        type: array
+        x-ms-summary: Recommendations
+        items:
+          type: object
+          properties:
+            priority:
+              type: string
+              enum: [high, medium, low]
+            action:
+              type: string
+            details:
+              type: string
+            impact:
+              type: string
+
+  AdvancedAnalytics:
+    type: object
+    x-ms-summary: Advanced Analytics
+    properties:
+      category_analysis:
+        type: object
+        x-ms-summary: Category Analysis
+        properties:
+          categories:
+            type: array
+            items:
+              type: object
+              properties:
+                category:
+                  type: string
+                count:
+                  type: integer
+                  format: int32
+                percentage:
+                  type: number
+          diversity_score:
+            type: number
+            x-ms-summary: Category Diversity Score
+      temporal_patterns:
+        type: object
+        x-ms-summary: Time-Based Patterns
+        properties:
+          peak_hours:
+            type: array
+            x-ms-summary: Peak Hours
+            items:
+              type: object
+              properties:
+                hour:
+                  type: integer
+                  format: int32
+                count:
+                  type: integer
+                  format: int32
+                time_range:
+                  type: string
+          day_of_week_distribution:
+            type: object
+            x-ms-summary: Day of Week Distribution
+          monthly_trends:
+            type: object
+            x-ms-summary: Monthly Trends
+            properties:
+              current_month_count:
+                type: integer
+                format: int32
+              daily_average:
+                type: number
+              projected_month_total:
+                type: number
+      agent_analytics:
+        type: object
+        x-ms-summary: Agent Performance Analytics
+        properties:
+          agent_metrics:
+            type: array
+            items:
+              type: object
+              properties:
+                agent_id:
+                  type: integer
+                  format: int64
+                total_tickets:
+                  type: integer
+                  format: int32
+                resolved_tickets:
+                  type: integer
+                  format: int32
+                resolution_rate:
+                  type: number
+                average_handling_time:
+                  type: number
+          top_performer:
+            type: integer
+            format: int64
+            x-ms-summary: Top Performer ID
+      customer_impact:
+        type: object
+        x-ms-summary: Customer Impact Analysis
+        properties:
+          vip_satisfaction:
+            type: object
+            x-ms-summary: VIP Analysis
+            properties:
+              has_vip_tickets:
+                type: boolean
+              total_vip_tickets:
+                type: integer
+                format: int32
+              average_vip_age_hours:
+                type: number
+              unresolved_vip_tickets:
+                type: integer
+                format: int32
+              vip_urgency_rate:
+                type: number
+          response_time_by_priority:
+            type: object
+            x-ms-summary: Response Time by Priority
+          escalation_patterns:
+            type: object
+            x-ms-summary: Escalation Patterns
+            properties:
+              escalation_candidates:
+                type: integer
+                format: int32
+              escalation_rate:
+                type: number
+              common_escalation_categories:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    category:
+                      type: string
+                    count:
+                      type: integer
+                      format: int32
+      predictive_insights:
+        type: object
+        x-ms-summary: Predictive Insights
+        properties:
+          expected_resolution_load:
+            type: object
+            properties:
+              open_tickets:
+                type: integer
+                format: int32
+              expected_resolutions_24h:
+                type: number
+              expected_resolutions_48h:
+                type: number
+          risk_score:
+            type: number
+            x-ms-summary: Overall Risk Score (0-100)
+          resource_requirements:
+            type: object
+            properties:
+              estimated_agent_hours:
+                type: number
+              recommended_agents:
+                type: number
+              overtime_risk:
+                type: string
+                enum: [low, medium, high]
+
+  QueryInterpretation:
+    type: object
+    x-ms-summary: Query Interpretation
+    x-ms-visibility: advanced
+    properties:
+      original_query:
+        type: string
+        x-ms-summary: Original Query
+      interpreted_filters:
+        type: string
+        x-ms-summary: API Filters
+      interpretation_confidence:
+        type: string
+        x-ms-summary: Confidence Level
+
+  ProblemInsights:
+    type: object
+    x-ms-summary: Problem Insights
+    properties:
+      metrics:
+        type: object
+        x-ms-summary: Problem Metrics
+        properties:
+          total_count:
+            type: integer
+            format: int32
+          open_problems:
+            type: integer
+            format: int32
+          change_requested:
+            type: integer
+            format: int32
+          high_impact:
+            type: integer
+            format: int32
+          critical_priority:
+            type: integer
+            format: int32
+      impact_analysis:
+        type: object
+        x-ms-summary: Impact Analysis
+        properties:
+          affected_services:
+            type: integer
+            format: int32
+          user_impact_estimate:
+            type: integer
+            format: int32
+          business_criticality:
+            type: string
+      resolution_progress:
+        type: object
+        x-ms-summary: Resolution Progress
+        properties:
+          average_age_days:
+            type: number
+          stale_problems:
+            type: integer
+            format: int32
+          pending_changes:
+            type: integer
+            format: int32
+
+  ChangeInsights:
+    type: object
+    x-ms-summary: Change Insights
+    properties:
+      metrics:
+        type: object
+        x-ms-summary: Change Metrics
+        properties:
+          total_count:
+            type: integer
+            format: int32
+          pending_approval:
+            type: integer
+            format: int32
+          approved:
+            type: integer
+            format: int32
+          in_progress:
+            type: integer
+            format: int32
+          high_risk:
+            type: integer
+            format: int32
+          emergency_changes:
+            type: integer
+            format: int32
+      schedule_analysis:
+        type: object
+        x-ms-summary: Schedule Analysis
+        properties:
+          changes_this_week:
+            type: integer
+            format: int32
+          changes_this_month:
+            type: integer
+            format: int32
+          weekend_changes:
+            type: integer
+            format: int32
+          business_hours_changes:
+            type: integer
+            format: int32
+      risk_assessment:
+        type: object
+        x-ms-summary: Risk Assessment
+        properties:
+          overall_risk_level:
+            type: string
+          high_risk_concentration:
+            type: number
+          emergency_change_rate:
+            type: number
+
+  ReleaseInsights:
+    type: object
+    x-ms-summary: Release Insights
+    properties:
+      metrics:
+        type: object
+        x-ms-summary: Release Metrics
+        properties:
+          total_count:
+            type: integer
+            format: int32
+          in_progress:
+            type: integer
+            format: int32
+          completed:
+            type: integer
+            format: int32
+          on_hold:
+            type: integer
+            format: int32
+          major_releases:
+            type: integer
+            format: int32
+      completion_analysis:
+        type: object
+        x-ms-summary: Completion Analysis
+        properties:
+          completion_rate:
+            type: number
+          average_release_duration:
+            type: number
+          delayed_releases:
+            type: integer
+            format: int32
+      upcoming_releases:
+        type: object
+        x-ms-summary: Upcoming Releases
+        properties:
+          next_7_days:
+            type: integer
+            format: int32
+          next_30_days:
+            type: integer
+            format: int32
+          release_density:
+            type: string
+
+  # Enhanced Response Structures
+  TicketListResponse:
+    type: object
+    properties:
+      tickets:
+        type: array
+        items:
+          $ref: '#/definitions/EnhancedTicket'
+        x-ms-summary: Tickets
+      metadata:
+        $ref: '#/definitions/ResponseMetadata'
+      summary:
+        $ref: '#/definitions/TicketSummary'
+      insights:
+        $ref: '#/definitions/TicketInsights'
+      analytics:
+        $ref: '#/definitions/AdvancedAnalytics'
+        x-ms-summary: Advanced Analytics
+        x-ms-visibility: advanced
+      query_interpretation:
+        $ref: '#/definitions/QueryInterpretation'
+
+  EnhancedTicket:
+    type: object
+    properties:
+      # Base Ticket properties
+      id:
+        type: integer
+        format: int64
+        x-ms-summary: Ticket ID
+      subject:
+        type: string
+        x-ms-summary: Subject
+      description:
+        type: string
+        x-ms-summary: Description (HTML)
+      description_text:
+        type: string
+        x-ms-summary: Description (Text)
+      status:
+        type: integer
+        format: int32
+        x-ms-summary: Status Code
+      priority:
+        type: integer
+        format: int32
+        x-ms-summary: Priority Code
+      requester_id:
+        type: integer
+        format: int64
+        x-ms-summary: Requester ID
+      agent_id:
+        type: integer
+        format: int64
+        x-ms-summary: Agent ID
+      group_id:
+        type: integer
+        format: int64
+        x-ms-summary: Group ID
+      created_at:
+        type: string
+        format: date-time
+        x-ms-summary: Created At
+      updated_at:
+        type: string
+        format: date-time
+        x-ms-summary: Updated At
+      due_by:
+        type: string
+        format: date-time
+        x-ms-summary: Due By
+      custom_fields:
+        type: object
+        x-ms-summary: Custom Fields
+      workspace_id:
+        type: integer
+        format: int32
+        x-ms-summary: Workspace ID
+      requester:
+        type: object
+        properties:
+          id:
+            type: integer
+            format: int64
+          email:
+            type: string
+          is_vip:
+            type: boolean
+      stats:
+        type: object
+        x-ms-summary: Statistics
+      # Enhanced properties
+      age_hours:
+        type: integer
+        format: int32
+        x-ms-summary: Age in Hours
+      age_days:
+        type: integer
+        format: int32
+        x-ms-summary: Age in Days
+      age_formatted:
+        type: string
+        x-ms-summary: Age (Formatted)
+      priority_label:
+        type: string
+        x-ms-summary: Priority Label
+        enum: [Low, Medium, High, Urgent]
+      status_label:
+        type: string
+        x-ms-summary: Status Label
+        enum: [Open, Pending, Resolved, Closed, "Waiting on Customer", "Waiting on Third Party"]
+      source_label:
+        type: string
+        x-ms-summary: Source Label
+      semantic_context:
+        type: object
+        x-ms-summary: Semantic Context
+        properties:
+          urgency_level:
+            type: string
+          natural_language_status:
+            type: string
+          requires_action:
+            type: boolean
+      enhanced_context:
+        type: object
+        x-ms-summary: Enhanced Context
+        x-ms-visibility: advanced
+        properties:
+          suggested_actions:
+            type: array
+            items:
+              type: string
+            x-ms-summary: Suggested Actions
+          escalation_risk:
+            type: string
+            x-ms-summary: Escalation Risk Level
+          customer_sentiment:
+            type: string
+            x-ms-summary: Customer Sentiment
+          categorization_suggestions:
+            type: object
+            x-ms-summary: Intelligent Categorization
+            properties:
+              primary:
+                type: string
+                x-ms-summary: Primary Category
+              secondary:
+                type: array
+                items:
+                  type: string
+                x-ms-summary: Secondary Categories
+              suggested_tags:
+                type: array
+                items:
+                  type: string
+                x-ms-summary: Suggested Tags
+              confidence:
+                type: number
+                x-ms-summary: Confidence Score
+              subcategory:
+                type: string
+                x-ms-summary: Subcategory
+              pattern_insights:
+                type: object
+                x-ms-summary: Pattern-Based Insights
+                properties:
+                  urgency_indicators:
+                    type: integer
+                    format: int32
+                  is_recurring:
+                    type: boolean
+                  multiple_issues:
+                    type: boolean
+                  physical_symptoms:
+                    type: array
+                    items:
+                      type: string
+                  network_symptoms:
+                    type: array
+                    items:
+                      type: string
+                  error_patterns:
+                    type: array
+                    items:
+                      type: string
+          similar_tickets_pattern:
+            type: string
+            x-ms-summary: Similar Ticket Pattern
+          resolution_time_estimate:
+            type: string
+            x-ms-summary: Estimated Resolution Time
+          skill_requirements:
+            type: array
+            items:
+              type: string
+            x-ms-summary: Required Skills
+      workflow_context:
+        type: object
+        x-ms-summary: Workflow Context
+
+  # Base Definitions
+  Ticket:
+    type: object
+    properties:
+      id:
+        type: integer
+        format: int64
+        x-ms-summary: Ticket ID
+      subject:
+        type: string
+        x-ms-summary: Subject
+      description:
+        type: string
+        x-ms-summary: Description (HTML)
+      description_text:
+        type: string
+        x-ms-summary: Description (Text)
+      status:
+        type: integer
+        format: int32
+        x-ms-summary: Status Code
+      priority:
+        type: integer
+        format: int32
+        x-ms-summary: Priority Code
+      requester_id:
+        type: integer
+        format: int64
+        x-ms-summary: Requester ID
+      agent_id:
+        type: integer
+        format: int64
+        x-ms-summary: Agent ID
+      group_id:
+        type: integer
+        format: int64
+        x-ms-summary: Group ID
+      created_at:
+        type: string
+        format: date-time
+        x-ms-summary: Created At
+      updated_at:
+        type: string
+        format: date-time
+        x-ms-summary: Updated At
+      due_by:
+        type: string
+        format: date-time
+        x-ms-summary: Due By
+      custom_fields:
+        type: object
+        x-ms-summary: Custom Fields
+      workspace_id:
+        type: integer
+        format: int32
+        x-ms-summary: Workspace ID
+      requester:
+        type: object
+        properties:
+          id:
+            type: integer
+            format: int32
+          email:
+            type: string
+          is_vip:
+            type: boolean
+      stats:
+        type: object
+        x-ms-summary: Statistics
+
+  EnhancedProblem:
+    type: object
+    properties:
+      # Base Problem properties
+      id:
+        type: integer
+        format: int64
+        x-ms-summary: Problem ID
+      subject:
+        type: string
+        x-ms-summary: Subject
+      impact:
+        type: integer
+        format: int32
+        x-ms-summary: Impact Code
+      status:
+        type: integer
+        format: int32
+        x-ms-summary: Status Code
+      priority:
+        type: integer
+        format: int32
+        x-ms-summary: Priority Code
+      created_at:
+        type: string
+        format: date-time
+        x-ms-summary: Created At
+      # Enhanced properties
+      impact_label:
+        type: string
+        x-ms-summary: Impact Label
+        enum: [Low, Medium, High]
+      status_label:
+        type: string
+        x-ms-summary: Status Label
+      priority_label:
+        type: string
+        x-ms-summary: Priority Label
+        enum: [Low, Medium, High, Urgent]
+
+  Problem:
+    type: object
+    properties:
+      id:
+        type: integer
+        format: int64
+        x-ms-summary: Problem ID
+      subject:
+        type: string
+        x-ms-summary: Subject
+      impact:
+        type: integer
+        format: int32
+        x-ms-summary: Impact Code
+      status:
+        type: integer
+        format: int32
+        x-ms-summary: Status Code
+      priority:
+        type: integer
+        format: int32
+        x-ms-summary: Priority Code
+      created_at:
+        type: string
+        format: date-time
+        x-ms-summary: Created At
+
+  EnhancedChange:
+    type: object
+    properties:
+      # Base Change properties
+      id:
+        type: integer
+        format: int64
+        x-ms-summary: Change ID
+      subject:
+        type: string
+        x-ms-summary: Subject
+      risk:
+        type: integer
+        format: int32
+        x-ms-summary: Risk Code
+      change_type:
+        type: integer
+        format: int32
+        x-ms-summary: Change Type Code
+      impact:
+        type: integer
+        format: int32
+        x-ms-summary: Impact Code
+      status:
+        type: integer
+        format: int32
+        x-ms-summary: Status Code
+      planned_start_date:
+        type: string
+        x-ms-summary: Planned Start Date
+      planned_end_date:
+        type: string
+        x-ms-summary: Planned End Date
+      # Enhanced properties
+      risk_label:
+        type: string
+        x-ms-summary: Risk Label
+        enum: [Low, Medium, High, Very High]
+      change_type_label:
+        type: string
+        x-ms-summary: Change Type Label
+        enum: [Minor, Standard, Major, Emergency]
+      impact_label:
+        type: string
+        x-ms-summary: Impact Label
+        enum: [Low, Medium, High]
+      status_label:
+        type: string
+        x-ms-summary: Status Label
+      hours_to_implementation:
+        type: integer
+        format: int32
+        x-ms-summary: Hours to Implementation
+
+  Change:
+    type: object
+    properties:
+      id:
+        type: integer
+        format: int64
+        x-ms-summary: Change ID
+      subject:
+        type: string
+        x-ms-summary: Subject
+      risk:
+        type: integer
+        format: int32
+        x-ms-summary: Risk Code
+      change_type:
+        type: integer
+        format: int32
+        x-ms-summary: Change Type Code
+      impact:
+        type: integer
+        format: int32
+        x-ms-summary: Impact Code
+      status:
+        type: integer
+        format: int32
+        x-ms-summary: Status Code
+      planned_start_date:
+        type: string
+        x-ms-summary: Planned Start Date
+      planned_end_date:
+        type: string
+        x-ms-summary: Planned End Date
+
+  EnhancedRelease:
+    type: object
+    properties:
+      # Base Release properties
+      id:
+        type: integer
+        format: int64
+        x-ms-summary: Release ID
+      subject:
+        type: string
+        x-ms-summary: Subject
+      status:
+        type: integer
+        format: int32
+        x-ms-summary: Status Code
+      priority:
+        type: integer
+        format: int32
+        x-ms-summary: Priority Code
+      release_type:
+        type: integer
+        format: int32
+        x-ms-summary: Release Type Code
+      # Enhanced properties
+      status_label:
+        type: string
+        x-ms-summary: Status Label
+      priority_label:
+        type: string
+        x-ms-summary: Priority Label
+        enum: [Low, Medium, High, Urgent]
+      release_type_label:
+        type: string
+        x-ms-summary: Release Type Label
+        enum: [Minor, Standard, Major, Emergency]
+
+  Release:
+    type: object
+    properties:
+      id:
+        type: integer
+        format: int64
+        x-ms-summary: Release ID
+      subject:
+        type: string
+        x-ms-summary: Subject
+      status:
+        type: integer
+        format: int32
+        x-ms-summary: Status Code
+      priority:
+        type: integer
+        format: int32
+        x-ms-summary: Priority Code
+      release_type:
+        type: integer
+        format: int32
+        x-ms-summary: Release Type Code
+
+  Agent:
+    type: object
+    properties:
+      id:
+        type: integer
+        format: int64
+        x-ms-summary: Agent ID
+      first_name:
+        type: string
+        x-ms-summary: First Name
+      last_name:
+        type: string
+        x-ms-summary: Last Name
+      email:
+        type: string
+        x-ms-summary: Email
+      active:
+        type: boolean
+        x-ms-summary: Active
+      type:
+        type: string
+        x-ms-summary: Agent Type
+      type_label:
+        type: string
+        x-ms-summary: Type Label
+        enum: [Full Time, Occasional]
+      status_label:
+        type: string
+        x-ms-summary: Status Label
+        enum: [Active, Inactive]
+
+  Requester:
+    type: object
+    properties:
+      id:
+        type: integer
+        format: int64
+        x-ms-summary: Requester ID
+      first_name:
+        type: string
+        x-ms-summary: First Name
+      last_name:
+        type: string
+        x-ms-summary: Last Name
+      email:
+        type: string
+        x-ms-summary: Email
+      active:
+        type: boolean
+        x-ms-summary: Active
+      is_vip:
+        type: boolean
+        x-ms-summary: VIP Status
+      display_name:
+        type: string
+        x-ms-summary: Display Name
+      status_label:
+        type: string
+        x-ms-summary: Status Label
+        enum: [Active, Inactive]
+
+  Conversation:
+    type: object
+    properties:
+      id:
+        type: integer
+        format: int64
+        x-ms-summary: Conversation ID
+      body:
+        type: string
+        x-ms-summary: Body (HTML)
+      body_text:
+        type: string
+        x-ms-summary: Body (Text)
+      private:
+        type: boolean
+        x-ms-summary: Private Note
+      created_at:
+        type: string
+        format: date-time
+        x-ms-summary: Created At
+
+  TimeEntry:
+    type: object
+    properties:
+      id:
+        type: integer
+        format: int64
+        x-ms-summary: Time Entry ID
+      time_spent:
+        type: integer
+        format: int32
+        x-ms-summary: Time Spent (Minutes)
+      note:
+        type: string
+        x-ms-summary: Note
+      billable:
+        type: boolean
+        x-ms-summary: Billable
+      created_at:
+        type: string
+        format: date-time
+        x-ms-summary: Created At
+      agent_id:
+        type: integer
+        format: int64
+        x-ms-summary: Agent ID
+
+  ErrorResponse:
+    type: object
+    properties:
+      description:
+        type: string
+      errors:
+        type: array
+        items:
+          type: object
+          properties:
+            field:
+              type: string
+            message:
+              type: string
+            code:
+              type: string
+
+# Standard Responses
+responses:
+  BadRequest:
+    description: Bad Request
+    schema:
+      $ref: '#/definitions/ErrorResponse'
+  Unauthorized:
+    description: Unauthorized
+    schema:
+      $ref: '#/definitions/ErrorResponse'
+  Forbidden:
+    description: Forbidden
+    schema:
+      $ref: '#/definitions/ErrorResponse'
+  NotFound:
+    description: Not Found
+    schema:
+      $ref: '#/definitions/ErrorResponse'
+  TooManyRequests:
+    description: Too Many Requests
+    schema:
+      $ref: '#/definitions/ErrorResponse'
+
+# Power Platform Extensions
+x-ms-capabilities:
+  testConnection:
+    operationId: ListTickets
+  caching:
+    ttl: 360  # Cache for 6 minutes
+  throttling:
+    calls: 100
+    renewalPeriod: 60
+
+x-ms-connector-metadata:
+  - propertyName: Website
+    propertyValue: https://freshservice.com
+  - propertyName: Privacy policy
+    propertyValue: https://www.freshworks.com/privacy/
+  - propertyName: Categories
+    propertyValue: IT Operations;AI

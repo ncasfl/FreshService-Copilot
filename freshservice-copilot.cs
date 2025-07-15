@@ -175,7 +175,7 @@ public class Script : ScriptBase
         // Enhanced ticket processing
         foreach (var ticket in tickets)
         {
-            EnrichTicketData(ticket);
+            EnrichTicketDataSafe(ticket);
             AddTicketSemanticContext(ticket);
         }
         
@@ -190,7 +190,7 @@ public class Script : ScriptBase
                 ["has_more"] = data["link_to_next_page"] != null
             },
             ["summary"] = GenerateTicketListSummary(tickets),
-            ["insights"] = GenerateEnhancedTicketInsights(tickets), // V4: Enhanced insights
+            ["insights"] = GenerateEnhancedTicketInsightsSafe(tickets), // V4: Enhanced insights
             ["analytics"] = GenerateAdvancedAnalytics(tickets)       // V4: New advanced analytics
         };
         
@@ -224,7 +224,7 @@ public class Script : ScriptBase
         
         if (ticket != null)
         {
-            EnrichTicketData(ticket);
+            EnrichTicketDataSafe(ticket);
             AddTicketSemanticContext(ticket);
             AddTicketWorkflowHints(ticket);
             
@@ -828,10 +828,10 @@ public class Script : ScriptBase
     {
         var workload = new JObject();
         
-        // Group by agent - using safe integer parsing
+        // Group by agent - using safe long parsing for IDs
         var ticketsByAgent = tickets
-            .Where(t => t["responder_id"] != null && SafeGetInt(t["responder_id"]).HasValue)
-            .GroupBy(t => SafeGetInt(t["responder_id"]).Value);
+            .Where(t => t["responder_id"] != null && SafeGetLong(t["responder_id"]).HasValue)
+            .GroupBy(t => SafeGetLong(t["responder_id"]).Value);
         
         var distribution = new JArray();
         foreach (var agentGroup in ticketsByAgent)
@@ -1194,8 +1194,8 @@ public class Script : ScriptBase
         var agentMetrics = new JArray();
         
         var ticketsByAgent = tickets
-            .Where(t => t["responder_id"] != null && t["responder_id"].Type == JTokenType.Integer)
-            .GroupBy(t => t["responder_id"].Value<int>());
+            .Where(t => t["responder_id"] != null && SafeGetLong(t["responder_id"]).HasValue)
+            .GroupBy(t => SafeGetLong(t["responder_id"]).Value);
         
         foreach (var agentGroup in ticketsByAgent)
         {
@@ -1699,7 +1699,54 @@ public class Script : ScriptBase
     #region Helper Methods (Continued)
     
     /// <summary>
-    /// Safely get integer value from JToken with overflow protection
+    /// Safely get long value from JToken with overflow protection
+    /// </summary>
+    private long? SafeGetLong(JToken token)
+    {
+        if (token == null || token.Type == JTokenType.Null)
+            return null;
+            
+        try
+        {
+            if (token.Type == JTokenType.Integer)
+            {
+                return token.Value<long>();
+            }
+            else if (token.Type == JTokenType.Float)
+            {
+                var doubleValue = token.Value<double>();
+                if (doubleValue >= long.MinValue && doubleValue <= long.MaxValue)
+                    return (long)doubleValue;
+                else
+                {
+                    this.Context.Logger.LogWarning($"Float value {doubleValue} exceeds Int64 range, returning null");
+                    return null;
+                }
+            }
+            else if (token.Type == JTokenType.String)
+            {
+                if (long.TryParse(token.ToString(), out long result))
+                    return result;
+            }
+        }
+        catch (Exception ex)
+        {
+            this.Context.Logger.LogWarning($"Failed to parse long from token: {ex.Message}");
+        }
+        
+        return null;
+    }
+    
+    /// <summary>
+    /// Safely get long value with default
+    /// </summary>
+    private long SafeGetLongOrDefault(JToken token, long defaultValue = 0)
+    {
+        return SafeGetLong(token) ?? defaultValue;
+    }
+
+    /// <summary>
+    /// Safely get integer value from JToken with overflow protection (for non-ID fields)
     /// </summary>
     private int? SafeGetInt(JToken token)
     {
@@ -1746,7 +1793,7 @@ public class Script : ScriptBase
     }
     
     /// <summary>
-    /// Safely get integer value with default
+    /// Safely get integer value with default (for non-ID fields)
     /// </summary>
     private int SafeGetIntOrDefault(JToken token, int defaultValue = 0)
     {
@@ -2939,6 +2986,76 @@ public class Script : ScriptBase
         
         // Combine filters
         return filters.Count > 0 ? string.Join(" AND ", filters) : "";
+    }
+    
+    #endregion
+
+    #region Safe Method Implementations
+    
+    private void EnrichTicketDataSafe(JToken ticket)
+    {
+        try
+        {
+            if (ticket["created_at"] != null)
+            {
+                var createdAt = DateTime.Parse(ticket["created_at"].ToString());
+                var age = DateTime.UtcNow - createdAt;
+                ticket["age_hours"] = (long)age.TotalHours;
+                ticket["age_days"] = (long)age.TotalDays;
+                ticket["age_formatted"] = FormatAge(age);
+            }
+
+            var priority = ticket["priority"]?.Type == JTokenType.Integer ? ticket["priority"].Value<int?>() ?? 1 : 1;
+            ticket["priority_label"] = GetPriorityLabel(priority);
+
+            var status = ticket["status"]?.Type == JTokenType.Integer ? ticket["status"].Value<int?>() ?? 2 : 2;
+            ticket["status_label"] = GetStatusLabel(status);
+
+            var source = ticket["source"]?.Type == JTokenType.Integer ? ticket["source"].Value<int?>() ?? 1 : 1;
+            ticket["source_label"] = GetSourceLabel(source);
+        }
+        catch (Exception ex)
+        {
+            this.Context.Logger?.LogWarning($"Error in EnrichTicketDataSafe: {ex.Message}");
+            ticket["age_hours"] = ticket["age_hours"] ?? 0;
+            ticket["age_days"] = ticket["age_days"] ?? 0;
+            ticket["age_formatted"] = ticket["age_formatted"] ?? "Unknown";
+            ticket["priority_label"] = ticket["priority_label"] ?? "Medium";
+            ticket["status_label"] = ticket["status_label"] ?? "Open";
+            ticket["source_label"] = ticket["source_label"] ?? "Email";
+        }
+    }
+    
+    private JObject GenerateEnhancedTicketInsightsSafe(JArray tickets)
+    {
+        try
+        {
+            if (tickets == null || !tickets.Any())
+            {
+                return new JObject
+                {
+                    ["metrics"] = new JObject { ["total_count"] = 0 },
+                    ["trends"] = new JObject { ["volume_trend"] = "no_data" },
+                    ["risks"] = new JObject { ["sla_breach_count"] = 0 },
+                    ["workload"] = new JObject { ["unassigned_count"] = 0 },
+                    ["performance"] = new JObject { ["average_resolution_hours"] = 0 },
+                    ["executive_summary"] = "No ticket data available for analysis.",
+                    ["actionable_recommendations"] = new JArray()
+                };
+            }
+            return GenerateEnhancedTicketInsights(tickets);
+        }
+        catch (Exception ex)
+        {
+            this.Context.Logger?.LogError($"Error in GenerateEnhancedTicketInsightsSafe: {ex.Message}");
+            return new JObject
+            {
+                ["error"] = true,
+                ["error_message"] = "An error occurred processing the data. Please contact support.",
+                ["metrics"] = new JObject { ["total_count"] = 0, ["processing_error"] = true },
+                ["executive_summary"] = "Unable to process ticket insights due to data processing error."
+            };
+        }
     }
     
     #endregion
