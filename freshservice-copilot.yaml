@@ -7,7 +7,7 @@ info:
     status: preview
 
 # Replace 'yourdomain' with your actual FreshService subdomain
-host: sagitecsolutions.freshservice.com
+host: yourdomain.freshservice.com
 basePath: /api/v2
 schemes:
   - https
