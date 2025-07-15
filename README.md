@@ -224,26 +224,26 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Changelog
 
-### V4.0.0 (Current)
+### V1.0.0 (Current)
 - ✨ Advanced analytics with predictive insights
 - 🔮 Resource planning and forecasting
 - 📊 Multi-dimensional performance analysis
 - 🎯 Executive intelligence with natural language summaries
 - 🛡️ Enhanced safety features and error handling
 
-### V3.0.0
+### V0.9.0
 - 🤖 Intelligent categorization and pattern detection
 - 🎭 Confidence scoring for automated classifications
 - 🔍 Enhanced skill matching and routing
 - 📈 Improved trend analysis
 
-### V2.0.0
+### V0.5.0
 - 🎤 Natural language query support
 - 🧠 Enhanced semantic context
 - 🔄 Real-time insights and recommendations
 - 🎯 Power Platform optimization
 
-### V1.0.0
+### V0.4.0
 - 🚀 Initial release with basic FreshService integration
 - 📋 Standard API endpoints
 - 🔧 Basic error handling
